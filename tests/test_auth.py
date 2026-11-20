@@ -87,3 +87,49 @@ def test_successful_login_clears_previous_failed_attempts():
     result = auth.authenticate("alice", "Alice123!Secure")
     assert result["success"] is True
     assert "alice" not in auth.attempts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def test_blocking_one_user_does_not_affect_another():
+    # Arrange: create a second user
+    bob_password = "BobSecure123!"
+    assert auth.register_user("bob_isolated", bob_password) is True
+    # Act: lock Alice's account after three failed attempts
+    for _ in range(auth.MAX_ATTEMPTS):
+        auth.authenticate("alice", "WrongPassword123!")
+    alice_result = auth.authenticate("alice", "Alice123!Secure")
+    bob_result = auth.authenticate("bob_isolated", bob_password)
+
+    # Assert: Alice is locked, but Bob can still log in
+    assert alice_result["success"] is False
+    assert bob_result["success"] is True
+
+
+def test_same_password_produces_different_stored_hashes():
+    # Arrange
+    password = "SharedPassword123!"
+    # Act
+    result1 = auth.register_user("salt_user_one", password)
+    result2 = auth.register_user("salt_user_two", password)
+    hash1 = auth.users["salt_user_one"]
+    hash2 = auth.users["salt_user_two"]
+    # Assert
+    assert result1 is True
+    assert result2 is True
+    assert hash1 != hash2
+    assert hash1.startswith("pbkdf2_sha256$")
+    assert hash2.startswith("pbkdf2_sha256$")
